@@ -20,8 +20,8 @@ CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS"]
 
 
 def grep(keywords):
-    # TODO: currently we only grep from title, also grep from other fields in the future maybe?
-    constraints = [Paper.title.contains(x) for x in keywords]
+    # TODO: currently we only grep from title and abstract, also grep from other fields in the future maybe?
+    constraints = [sqlalchemy.or_(Paper.title.contains(x), Paper.abstract.contains(x)) for x in keywords]
 
     with Session() as session:
         papers = session.query(Paper).filter(*constraints).all()
@@ -41,6 +41,7 @@ def main():
                                      usage="%(prog)s [options] -k <keywords>")
     parser.add_argument('-k', type=str, help="keywords to grep, separated by ','. For example, 'linux,kernel,exploit'", default='')
     parser.add_argument('--build-db', action="store_true", help="Builds the database of conference papers")
+    parser.add_argument('--abstracts', action="store_true", help="Try to load the abstracts of the papers")
     args = parser.parse_args()
 
     if args.k:
@@ -57,7 +58,7 @@ def main():
         show_papers(papers)
     elif args.build_db:
         print("Building db...")
-        build_db()
+        build_db(args.abstracts)
 
 
 if __name__ == "__main__":

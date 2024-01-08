@@ -12,7 +12,7 @@ pip3 install -e .
 ### Database Initialization
 If you want to update the papers stored in `papers.db`, you can recreate it with:
 ```bash
-top4grep --build-db
+top4grep --build-db --abstracts
 ```
 
 Which will build the db wherever you run it.
@@ -29,6 +29,6 @@ Currently, the query is just a case-insensitive match (just like grep). The retu
 ![screenshot](https://raw.githubusercontent.com/Kyle-Kyle/top4grep/master/img/screenshot.png)
 
 ## TODO
-- [ ] grep in abstract
+- [x] grep in abstract
 - [ ] fuzzy match
 - [ ] complex search logic (`OR` operation)
