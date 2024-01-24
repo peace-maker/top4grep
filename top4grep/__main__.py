@@ -7,6 +7,7 @@ from .db import Base, Paper
 from .build_db import build_db
 from .utils import new_logger
 import argparse
+from itertools import zip_longest
 
 DB_PATH = "papers.db"
 
@@ -21,7 +22,7 @@ CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS"]
 
 def grep(keywords):
     # TODO: currently we only grep from title and abstract, also grep from other fields in the future maybe?
-    constraints = [sqlalchemy.or_(Paper.title.contains(x), Paper.abstract.contains(x)) for x in keywords]
+    constraints = [sqlalchemy.or_(Paper.title.icontains(x), Paper.abstract.icontains(x)) for x in keywords]
 
     with Session() as session:
         papers = session.query(Paper).filter(*constraints).all()
@@ -30,10 +31,25 @@ def grep(keywords):
     papers = sorted(papers, key=lambda paper: paper.year + CONFERENCES.index(paper.conference)/10, reverse=True)
     return papers
 
+COLORS = [
+        "\033[91m", #red
+    "\033[92m", # green
+    "\033[93m", # yellow
+    "\033[94m", # light purple
+    "\033[95m", # purple
+    "\033[96m" # cyan
+]
 
-def show_papers(papers):
+def show_papers(papers, keywords):
     for paper in papers:
-        print(paper)
+        abstract = paper.abstract
+        header = paper.__repr__()
+        for (k,c) in zip_longest(keywords, COLORS, fillvalue="\033[96m"):
+            abstract = abstract.replace(k, c + k + "\033[00m")
+            header = header.replace(k, c + k + "\033[00m")
+        print(header)
+        print(abstract)
+        print("")
 
 
 def main():
@@ -55,7 +71,7 @@ def main():
         papers = grep(keywords)
         logger.debug(f"Found {len(papers)} papers")
 
-        show_papers(papers)
+        show_papers(papers,keywords)
     elif args.build_db:
         print("Building db...")
         build_db(args.abstracts)
