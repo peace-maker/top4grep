@@ -18,7 +18,8 @@ Session = sessionmaker(bind=engine)
 
 logger = new_logger("Top4Grep")
 
-CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS"]
+CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "RAID",
+               "ESORICS", "ACSAC", "AsiaCCS", "PETS"]
 
 
 def grep(keywords):
