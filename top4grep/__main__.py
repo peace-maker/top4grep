@@ -1,4 +1,5 @@
 import os
+import re
 
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
@@ -45,8 +46,9 @@ def show_papers(papers, keywords):
         abstract = paper.abstract
         header = paper.__repr__()
         for (k,c) in zip_longest(keywords, COLORS, fillvalue="\033[96m"):
-            abstract = abstract.replace(k, c + k + "\033[00m")
-            header = header.replace(k, c + k + "\033[00m")
+            kre = re.compile("(" + re.escape(k) + ")", re.IGNORECASE)
+            abstract = kre.sub(c + "\\1" "\033[00m", abstract)
+            header = kre.sub(c + "\\1" + "\033[00m", header)
         print(header)
         print(abstract)
         print("")
