@@ -13,13 +13,19 @@ from .utils import new_logger
 
 logger = new_logger("DB")
 
-KEYWORD = "kernel"
-CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS"]
+CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "ACSAC",
+               "RAID", "ESORICS", "AsiaCCS", "PETS"]
 NAME_MAP = {
         "NDSS": "ndss",
         "IEEE S&P": "sp",
         "USENIX": "uss",
         "CCS": "ccs",
+        "IEEE EuroS&P": "eurosp",
+        "ACSAC": "acsac",
+        "RAID": "raid",
+        "ESORICS": "esorics",
+        "AsiaCCS": "asiaccs",
+        "PETS": "popets"
         }
 
 engine = sqlalchemy.create_engine(f'sqlite:///papers.db')
