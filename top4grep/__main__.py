@@ -56,6 +56,11 @@ def show_papers(papers, keywords, show_abstracts=False):
             print(abstract)
             print("")
 
+def list_missing_abstract():
+    with Session() as session:
+        papers = session.query(Paper).filter(Paper.abstract == "").all()
+    for paper in papers:
+        print(paper)
 
 def main():
     parser = argparse.ArgumentParser(description='Scripts to query the paper database',
@@ -64,7 +69,12 @@ def main():
     parser.add_argument('--build-db', action="store_true", help="Builds the database of conference papers")
     parser.add_argument('--abstracts', action="store_true", help="Whether to display the abstracts of the papers")
     parser.add_argument('--load-abstracts', action="store_true", help="Try to load the abstracts of the papers")
+    parser.add_argument('--list-missing-abstract', action="store_true", help="List the papers that do not have abstracts")
     args = parser.parse_args()
+
+    if args.list_missing_abstract:
+        list_missing_abstract()
+        return
 
     if args.k:
         assert os.path.exists(DB_PATH), f"need to build a paper database first to perform wanted queries"
