@@ -1,16 +1,17 @@
+import argparse
 import os
 import re
+from itertools import zip_longest
+from pathlib import Path
 
 import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
-from .db import Base, Paper
 from .build_db import build_db
+from .db import Base, Paper
 from .utils import new_logger
-import argparse
-from itertools import zip_longest
 
-DB_PATH = "papers.db"
+DB_PATH = Path(__file__).parent / "papers.db"
 
 engine = sqlalchemy.create_engine(f'sqlite:///{DB_PATH}')
 Base.metadata.create_all(engine)

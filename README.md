@@ -10,12 +10,10 @@ pip3 install -e .
 
 ## Usage 
 ### Database Initialization
-If you want to update the papers stored in `papers.db`, you can recreate it with:
+If you want to update the papers stored in `top4grep/papers.db`, you can recreate it with:
 ```bash
 top4grep --build-db --abstracts
 ```
-
-Which will build the db wherever you run it.
 
 ### Query
 ```bash
