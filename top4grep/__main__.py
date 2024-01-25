@@ -43,7 +43,7 @@ COLORS = [
     "\033[96m" # cyan
 ]
 
-def show_papers(papers, keywords):
+def show_papers(papers, keywords, show_abstracts=False):
     for paper in papers:
         abstract = paper.abstract
         header = paper.__repr__()
@@ -52,8 +52,9 @@ def show_papers(papers, keywords):
             abstract = kre.sub(c + "\\1" "\033[00m", abstract)
             header = kre.sub(c + "\\1" + "\033[00m", header)
         print(header)
-        print(abstract)
-        print("")
+        if show_abstracts:
+            print(abstract)
+            print("")
 
 
 def main():
@@ -61,7 +62,8 @@ def main():
                                      usage="%(prog)s [options] -k <keywords>")
     parser.add_argument('-k', type=str, help="keywords to grep, separated by ','. For example, 'linux,kernel,exploit'", default='')
     parser.add_argument('--build-db', action="store_true", help="Builds the database of conference papers")
-    parser.add_argument('--abstracts', action="store_true", help="Try to load the abstracts of the papers")
+    parser.add_argument('--abstracts', action="store_true", help="Whether to display the abstracts of the papers")
+    parser.add_argument('--load-abstracts', action="store_true", help="Try to load the abstracts of the papers")
     args = parser.parse_args()
 
     if args.k:
@@ -75,10 +77,10 @@ def main():
         papers = grep(keywords)
         logger.debug(f"Found {len(papers)} papers")
 
-        show_papers(papers,keywords)
+        show_papers(papers,keywords,args.abstracts)
     elif args.build_db:
         print("Building db...")
-        build_db(args.abstracts)
+        build_db(args.load_abstracts)
 
 
 if __name__ == "__main__":
