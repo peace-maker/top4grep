@@ -2,20 +2,14 @@ import argparse
 import os
 import re
 from itertools import zip_longest
-from pathlib import Path
 
 import sqlalchemy
-from sqlalchemy.orm import sessionmaker
 
+from . import DB_PATH, Session
 from .build_db import build_db
-from .db import Base, Paper
+from .db import Paper
 from .utils import new_logger
 
-DB_PATH = Path(__file__).parent / "papers.db"
-
-engine = sqlalchemy.create_engine(f'sqlite:///{DB_PATH}')
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
 
 logger = new_logger("Top4Grep")
 
@@ -77,7 +71,7 @@ def main():
         return
 
     if args.k:
-        assert os.path.exists(DB_PATH), f"need to build a paper database first to perform wanted queries"
+        assert os.path.exists(DB_PATH), "need to build a paper database first to perform wanted queries"
         keywords = [x.strip() for x in args.k.split(',')]
         if keywords:
             logger.info("Grep based on the following keywords: %s", ', '.join(keywords))

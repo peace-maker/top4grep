@@ -2,13 +2,12 @@ import re
 from datetime import datetime
 
 import requests
-import sqlalchemy
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
-from sqlalchemy.orm import sessionmaker
 from urllib3.util import Retry
 
-from .db import Base, Paper
+from . import Session
+from .db import Paper
 from .utils import new_logger
 
 logger = new_logger("DB")
@@ -27,10 +26,6 @@ NAME_MAP = {
         "AsiaCCS": "asiaccs",
         "PETS": "popets"
         }
-
-engine = sqlalchemy.create_engine(f'sqlite:///papers.db')
-Base.metadata.create_all(engine)
-Session = sessionmaker(bind=engine)
 
 def save_paper(conf, year, title, authors, abstract):
     session = Session()

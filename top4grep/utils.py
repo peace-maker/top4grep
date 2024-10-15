@@ -1,8 +1,4 @@
-import os
-import uuid
 import logging
-import tempfile
-from contextlib import contextmanager
 
 import colorlog
 
@@ -28,36 +24,3 @@ def new_logger(name, level='DEBUG', new=True):
     logger.addHandler(handler)
 
     return logger
-
-@contextmanager
-def path_context(path):
-    cwd = os.getcwd()
-    try:
-        os.chdir(path)
-        yield path
-    finally:
-        os.chdir(cwd)
-
-@contextmanager
-def tmpdir_ctx():
-    try:
-        tmpdir = tempfile.mkdtemp()
-        yield tmpdir
-    finally:
-        os.system("rm -rf %s" % tmpdir)
-
-@contextmanager
-def tmpfile_ctx(prefix=None):
-    fname = str(uuid.uuid4())
-    if prefix:
-        fpath = os.path.join(prefix, fname)
-    else:
-        fpath = fname
-    fpath = os.path.abspath(fpath)
-
-
-    try:
-        os.system("touch %s" % fpath)
-        yield fpath
-    finally:
-        os.system("rm %s" % fpath)
