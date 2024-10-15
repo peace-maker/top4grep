@@ -13,18 +13,19 @@ from .utils import new_logger
 logger = new_logger("DB")
 
 CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "ACSAC",
-               "RAID", "ESORICS", "AsiaCCS", "PETS"]
+               "RAID", "ESORICS", "AsiaCCS", "PETS", "WWW"]
 NAME_MAP = {
-        "NDSS": "ndss",
-        "IEEE S&P": "sp",
-        "USENIX": "uss",
-        "CCS": "ccs",
-        "IEEE EuroS&P": "eurosp",
-        "ACSAC": "acsac",
-        "RAID": "raid",
-        "ESORICS": "esorics",
-        "AsiaCCS": "asiaccs",
-        "PETS": "popets"
+        "NDSS": ("ndss", "ndss"),
+        "IEEE S&P": ("sp", "sp"),
+        "USENIX": ("uss", "uss"),
+        "CCS": ("ccs", "ccs"),
+        "IEEE EuroS&P": ("eurosp", "eurosp"),
+        "ACSAC": ("acsac", "acsac"),
+        "RAID": ("raid", "raid"),
+        "ESORICS": [("esorics", "esorics"), ("esorics", "esorics{YEAR}-1"), ("esorics", "esorics{YEAR}-2")],
+        "AsiaCCS": [("ccs", "asiaccs"), ("asiaccs", "asiaccs")],
+        "PETS": [("pet", "pet"), ("pet", "pets"), ("popets", "popets", "journals")],
+        "WWW": ("www", "www"),
         }
 
 def save_paper(conf, year, title, authors, abstract):
@@ -87,29 +88,46 @@ def get_abstract(title, year):
 
 def get_papers(name, year, fetch_abstracts):
     cnt = 0
-    conf = NAME_MAP[name]
+    new_cnt = 0
+    confs = NAME_MAP[name]
+    if confs is str or isinstance(confs, tuple):
+        confs = [confs]
 
-    try:
-        r = requests.get(f"https://dblp.org/db/conf/{conf}/{conf}{year}.html")
-        assert r.status_code == 200
+    for conf in confs:
+        conf_type = "conf"
+        if len(conf) == 2:
+            conf_name, conf = conf
+        elif len(conf) == 3:
+            conf_name, conf, conf_type = conf
+        filename = f"{conf}{year}.html"
+        if "{YEAR}" in conf:
+            conf = conf.format(YEAR=year)
+            filename = f"{conf}.html"
+        try:
+            r = requests.get(f"https://dblp.org/db/{conf_type}/{conf_name}/{filename}")
+            if r.status_code == 404:
+                logger.warning(f"Failed to obtain papers at {name}-{year}")
+                continue
+            assert r.status_code == 200
 
-        html = BeautifulSoup(r.text, 'html.parser')
-        paper_htmls = html.find_all("li", {'class': "inproceedings"})
-        for paper_html in paper_htmls:
-            title = paper_html.find('span', {'class': 'title'}).text
-            authors = [x.text for x in paper_html.find_all('span', {'itemprop': 'author'})]
-            # insert the entry only if the paper does not exist
-            if not paper_exist(name, year, title, authors):
-                abstract = ""
-                if fetch_abstracts:
-                    abstract = get_abstract(title, year)
-                save_paper(name, year, title, authors, abstract)
-            cnt += 1
-    except Exception as e:
-        logger.warning(f"Failed to obtain papers at {name}-{year}")
-        logger.exception(e)
+            html = BeautifulSoup(r.text, 'html.parser')
+            paper_htmls = html.find_all("li", {'class': ["inproceedings", "article"]})
+            for paper_html in paper_htmls:
+                title = paper_html.find('span', {'class': 'title'}).text
+                authors = [x.text for x in paper_html.find_all('span', {'itemprop': 'author'})]
+                # insert the entry only if the paper does not exist
+                if not paper_exist(name, year, title, authors):
+                    abstract = ""
+                    if fetch_abstracts:
+                        abstract = get_abstract(title, year)
+                    save_paper(name, year, title, authors, abstract)
+                    new_cnt += 1
+                cnt += 1
+        except Exception as e:
+            logger.warning(f"Failed to obtain papers at {name}-{year}")
+            logger.exception(e)
 
-    logger.debug(f"Found {cnt} papers at {name}-{year}...")
+    logger.debug(f"Found {new_cnt} new papers ({cnt} total) at {name}-{year}...")
 
 
 def build_db(fetch_abstracts):

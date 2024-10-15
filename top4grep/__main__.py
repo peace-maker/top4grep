@@ -14,7 +14,7 @@ from .utils import new_logger
 logger = new_logger("Top4Grep")
 
 CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "RAID",
-               "ESORICS", "ACSAC", "AsiaCCS", "PETS"]
+               "ESORICS", "ACSAC", "AsiaCCS", "PETS", "WWW"]
 
 
 def grep(keywords):
