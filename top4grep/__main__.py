@@ -64,6 +64,7 @@ COLORS = [
 ]
 
 def show_papers(papers, keywords, show_abstracts=False):
+    longest_conf = max([len(paper.conference) for paper in papers])
     for paper in papers:
         abstract = paper.abstract
         title = paper.title
@@ -75,7 +76,7 @@ def show_papers(papers, keywords, show_abstracts=False):
             ansi_link = f"\033]8;;{paper.url}\033\\{title}\033]8;;\033\\"
         else:
             ansi_link = title
-        header = f"{paper.year}: {paper.conference:8s} - {ansi_link}"
+        header = f"{paper.year}: {paper.conference:{longest_conf}s} - {ansi_link}"
         print(header)
         if show_abstracts and abstract:
             print(abstract.strip())
