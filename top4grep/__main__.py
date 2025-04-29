@@ -4,6 +4,9 @@ import re
 from itertools import zip_longest
 
 import sqlalchemy
+from nltk import download, word_tokenize
+from nltk.data import find
+from nltk.stem import PorterStemmer
 
 from . import DB_PATH, Session
 from .build_db import build_db
@@ -12,10 +15,30 @@ from .utils import new_logger
 
 
 logger = new_logger("Top4Grep")
+stemmer = PorterStemmer()
 
 CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "RAID",
                "ESORICS", "ACSAC", "AsiaCCS", "PETS", "WWW"]
 
+# Function to check and download 'punkt' if not already available
+def check_and_download_punkt():
+    try:
+        # Check if 'punkt' is available, this will raise a LookupError if not found
+        find('tokenizers/punkt')
+        #print("'punkt' tokenizer models are already installed.")
+    except LookupError:
+        print("'punkt' tokenizer models not found. Downloading...")
+        # Download 'punkt' tokenizer models
+        download('punkt')
+        download('punkt_tab')
+        
+# trim word tokens from tokenizer to stem i.e. exploiting to exploit
+def fuzzy_match(title):
+    tokens = word_tokenize(title)
+    return [stemmer.stem(token) for token in tokens]
+    
+def existed_in_tokens(tokens, keywords):
+    return all(map(lambda k: stemmer.stem(k.lower()) in tokens, keywords))
 
 def grep(keywords):
     # TODO: currently we only grep from title and abstract, also grep from other fields in the future maybe?
@@ -23,9 +46,15 @@ def grep(keywords):
 
     with Session() as session:
         papers = session.query(Paper).filter(*constraints).all()
+    
+    #check whether whether nltk tokenizer data is downloaded
+    check_and_download_punkt()
+
+    #tokenize the title and filter out the substring matches
+    filter_paper = filter(lambda p: existed_in_tokens(fuzzy_match(p.title.lower() + " " + p.abstract.lower()), keywords), papers)
 
     # perform customized sorthing
-    papers = sorted(papers, key=lambda paper: paper.year + CONFERENCES.index(paper.conference)/10, reverse=True)
+    papers = sorted(filter_paper, key=lambda paper: paper.year + CONFERENCES.index(paper.conference)/10, reverse=True)
     return papers
 
 COLORS = [
@@ -61,9 +90,8 @@ def main():
                                      usage="%(prog)s [options] -k <keywords>")
     parser.add_argument('-k', type=str, help="keywords to grep, separated by ','. For example, 'linux,kernel,exploit'", default='')
     parser.add_argument('--build-db', action="store_true", help="Builds the database of conference papers")
-    parser.add_argument('--abstracts', action="store_true", help="Whether to display the abstracts of the papers")
-    parser.add_argument('--load-abstracts', action="store_true", help="Try to load the abstracts of the papers")
     parser.add_argument('--list-missing-abstract', action="store_true", help="List the papers that do not have abstracts")
+    parser.add_argument('--abstracts', action="store_true", help="Involve abstract into the database's building or query (Need Chrome for building)")
     args = parser.parse_args()
 
     if args.list_missing_abstract:
@@ -71,7 +99,7 @@ def main():
         return
 
     if args.k:
-        assert os.path.exists(DB_PATH), "need to build a paper database first to perform wanted queries"
+        assert DB_PATH.exists(), "need to build a paper database first to perform wanted queries"
         keywords = [x.strip() for x in args.k.split(',')]
         if keywords:
             colored_keywords = [f"{c}{k}\033[00m" for (k,c) in zip_longest(keywords, COLORS, fillvalue="\033[96m") if k and k != "\033[96m"]
@@ -85,7 +113,7 @@ def main():
         show_papers(papers,keywords,args.abstracts)
     elif args.build_db:
         print("Building db...")
-        build_db(args.load_abstracts)
+        build_db(args.abstracts)
 
 
 if __name__ == "__main__":

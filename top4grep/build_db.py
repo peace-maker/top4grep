@@ -9,6 +9,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 
 from . import Session
+from .abstract import Abstracts
 from .db import Paper
 from .utils import new_logger
 
@@ -16,6 +17,7 @@ S2_API_KEY = os.getenv("S2_API_KEY", "")
 S2_REQUESTS_PER_SECOND = 1
 
 logger = new_logger("DB")
+logger.setLevel('WARNING')
 
 CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "ACSAC",
                "RAID", "ESORICS", "AsiaCCS", "PETS", "WWW"]
@@ -34,6 +36,7 @@ NAME_MAP = {
         }
 
 def save_paper(conf, year, title, authors, abstract):
+    logger.debug(f'Adding paper {title} with abstract {abstract[:20]}...')
     session = Session()
     paper = Paper(conference=conf, year=year, title=title, authors=", ".join(authors), abstract=abstract)
     session.add(paper)
@@ -42,7 +45,7 @@ def save_paper(conf, year, title, authors, abstract):
 
 def paper_exist(conf, year, title, authors):
     session = Session()
-    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
+    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title, Paper.abstract==abstract).first()
     session.close()
     return paper is not None
 
@@ -59,7 +62,13 @@ def update_paper(conf, year, title, abstract):
     session.commit()
     session.close()
 
-def get_abstract(title, year):
+def get_abstract(paper_html, conf_name, title, year, authors):
+    abstract = Abstracts[conf_name].get_abstract(paper_html, title, authors)
+    if abstract:
+        return abstract
+    return get_abstract_s2(title, year)
+
+def get_abstract_s2(title, year):
     # https://www.zenrows.com/blog/python-requests-retry#use-existing-retry-wrapper
     retry_strategy = Retry(
         total=4,  # Maximum number of retries
@@ -109,12 +118,18 @@ def get_abstract(title, year):
     return abstract
 
 
-def get_papers(name, year, fetch_abstracts):
+def get_papers(name, year, build_abstract):
     cnt = 0
     new_cnt = 0
     confs = NAME_MAP[name]
     if confs is str or isinstance(confs, tuple):
         confs = [confs]
+    
+    # if build_abstract and name == "NDSS" and (year == 2018 or year == 2016):
+    #     logger.warning(f"Skipping the abstract for NDSS {year} becuase the website does not contain abstracts.")
+    #     extract_abstract = False
+    # else:
+    #     extract_abstract = build_abstract
 
     for conf in confs:
         conf_type = "conf"
@@ -141,13 +156,13 @@ def get_papers(name, year, fetch_abstracts):
                 # insert the entry only if the paper does not exist
                 if not paper_exist(name, year, title, authors):
                     abstract = ""
-                    if fetch_abstracts:
-                        abstract = get_abstract(title, year)
+                    if build_abstract:
+                        abstract = get_abstract(paper_html, name, title, year, authors)
                         time.sleep(S2_REQUESTS_PER_SECOND)
                     save_paper(name, year, title, authors, abstract)
                     new_cnt += 1
-                elif fetch_abstracts and not paper_has_abstract(name, year, title):
-                    abstract = get_abstract(title, year)
+                elif build_abstract and not paper_has_abstract(name, year, title):
+                    abstract = get_abstract(paper_html, name, title, year, authors)
                     if abstract:
                         update_paper(name, year, title, abstract)
                     time.sleep(S2_REQUESTS_PER_SECOND)
@@ -159,7 +174,7 @@ def get_papers(name, year, fetch_abstracts):
     logger.debug(f"Found {new_cnt} new papers ({cnt} total) at {name}-{year}...")
 
 
-def build_db(fetch_abstracts):
+def build_db(build_abstract):
     for conf in CONFERENCES:
         for year in range(2000, datetime.now().year+1):
-            get_papers(conf, year, fetch_abstracts)
+            get_papers(conf, year, build_abstract)
