@@ -1,5 +1,7 @@
+import os
 import re
 from datetime import datetime
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -9,6 +11,9 @@ from urllib3.util import Retry
 from . import Session
 from .db import Paper
 from .utils import new_logger
+
+S2_API_KEY = os.getenv("S2_API_KEY", "")
+S2_REQUESTS_PER_SECOND = 1
 
 logger = new_logger("DB")
 
@@ -41,6 +46,19 @@ def paper_exist(conf, year, title, authors):
     session.close()
     return paper is not None
 
+def paper_has_abstract(conf, year, title):
+    session = Session()
+    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
+    session.close()
+    return paper is not None and paper.abstract != ""
+
+def update_paper(conf, year, title, abstract):
+    session = Session()
+    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
+    paper.abstract = abstract
+    session.commit()
+    session.close()
+
 def get_abstract(title, year):
     # https://www.zenrows.com/blog/python-requests-retry#use-existing-retry-wrapper
     retry_strategy = Retry(
@@ -52,7 +70,12 @@ def get_abstract(title, year):
     session = requests.Session()
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-    r = session.get(f"https://api.semanticscholar.org/graph/v1/paper/search", params={"query": title, "s2FieldsOfStudy": "Computer Science", "fields": "title,year,venue,abstract"}, timeout=10)
+    r = session.get(
+        "https://api.semanticscholar.org/graph/v1/paper/search",
+        headers={'X-API-KEY': S2_API_KEY},
+        params={"query": title, "fieldsOfStudy": "Computer Science", "fields": "title,year,venue,abstract"},
+        timeout=10
+    )
     r.raise_for_status()
     data = r.json()
     if data["total"] == 0:
@@ -120,8 +143,14 @@ def get_papers(name, year, fetch_abstracts):
                     abstract = ""
                     if fetch_abstracts:
                         abstract = get_abstract(title, year)
+                        time.sleep(S2_REQUESTS_PER_SECOND)
                     save_paper(name, year, title, authors, abstract)
                     new_cnt += 1
+                elif fetch_abstracts and not paper_has_abstract(name, year, title):
+                    abstract = get_abstract(title, year)
+                    if abstract:
+                        update_paper(name, year, title, abstract)
+                    time.sleep(S2_REQUESTS_PER_SECOND)
                 cnt += 1
         except Exception as e:
             logger.warning(f"Failed to obtain papers at {name}-{year}")
