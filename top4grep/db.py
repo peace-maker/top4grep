@@ -15,6 +15,7 @@ class Paper(Base):
     title = Column(String)
     authors = Column(String)
     abstract = Column(String)
+    url = Column(String)
 
     def __repr__(self):
         return f"{self.year}: {self.conference:8s} - {self.title}"

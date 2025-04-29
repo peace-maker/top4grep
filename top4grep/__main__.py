@@ -58,7 +58,7 @@ def grep(keywords):
     return papers
 
 COLORS = [
-        "\033[91m", #red
+    "\033[91m", # red
     "\033[92m", # green
     "\033[93m", # yellow
     "\033[94m", # light purple
@@ -69,7 +69,11 @@ COLORS = [
 def show_papers(papers, keywords, show_abstracts=False):
     for paper in papers:
         abstract = paper.abstract
-        header = paper.__repr__()
+        if paper.url:
+            ansi_link = f"\033]8;;{paper.url}\033\\{paper.title}\033]8;;\033\\"
+        else:
+            ansi_link = paper.title
+        header = f"{paper.year}: {paper.conference:8s} - {ansi_link}"
         for (k,c) in zip_longest(keywords, COLORS, fillvalue="\033[96m"):
             kre = re.compile("(" + re.escape(k) + ")", re.IGNORECASE)
             abstract = kre.sub(c + "\\1" "\033[00m", abstract)

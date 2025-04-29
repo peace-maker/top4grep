@@ -46,10 +46,10 @@ NAME_MAP = {
         "WWW": ("www", "www"),
         }
 
-def save_paper(conf, year, title, authors, abstract):
+def save_paper(conf, year, title, authors, publisher_url, abstract):
     logger.debug(f'Adding paper {title} with abstract {abstract[:20]}...')
     session = Session()
-    paper = Paper(conference=conf, year=year, title=title, authors=", ".join(authors), abstract=abstract)
+    paper = Paper(conference=conf, year=year, title=title, authors=", ".join(authors), url=publisher_url, abstract=abstract)
     session.add(paper)
     session.commit()
     session.close()
@@ -66,10 +66,19 @@ def paper_has_abstract(conf, year, title):
     session.close()
     return paper is not None and paper.abstract is not None and paper.abstract != ""
 
-def update_paper(conf, year, title, abstract):
+def paper_has_url(conf, year, title):
     session = Session()
     paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
-    paper.abstract = abstract
+    session.close()
+    return paper is not None and paper.url is not None and paper.url != ""
+
+def update_paper(conf, year, title, publisher_url, abstract):
+    session = Session()
+    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
+    if publisher_url:
+        paper.url = publisher_url
+    if abstract:
+        paper.abstract = abstract
     session.commit()
     session.close()
 
@@ -171,17 +180,20 @@ def get_papers(name, year, build_abstract):
             for paper_html in paper_htmls:
                 title = paper_html.find('span', {'class': 'title'}).text
                 authors = [x.text for x in paper_html.find_all('span', {'itemprop': 'author'})]
+                ee = paper_html.find('li', {'class': 'ee'})
+                publisher_url = ee.find('a').get('href') if ee else ""
                 # insert the entry only if the paper does not exist
                 if not paper_exist(name, year, title):
                     abstract = ""
                     if build_abstract:
                         abstract = get_abstract(paper_html, name, title, year, authors)
-                    save_paper(name, year, title, authors, abstract)
+                    save_paper(name, year, title, authors, publisher_url, abstract)
                     new_cnt += 1
                 elif build_abstract and not paper_has_abstract(name, year, title):
                     abstract = get_abstract(paper_html, name, title, year, authors)
-                    if abstract:
-                        update_paper(name, year, title, abstract)
+                    update_paper(name, year, title, publisher_url, abstract)
+                elif publisher_url and not paper_has_url(name, year, title):
+                    update_paper(name, year, title, publisher_url, None)
                 cnt += 1
         except Exception as e:
             logger.warning(f"Failed to obtain papers at {name}-{year} from {r.request.url}")
