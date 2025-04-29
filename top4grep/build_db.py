@@ -19,8 +19,19 @@ S2_REQUESTS_PER_SECOND = 1
 logger = new_logger("DB")
 logger.setLevel('WARNING')
 
-CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "ACSAC",
-               "RAID", "ESORICS", "AsiaCCS", "PETS", "WWW"]
+CONFERENCES = [
+    "NDSS",
+    "IEEE S&P",
+    "USENIX",
+    "CCS",
+    "IEEE EuroS&P",
+    "ACSAC",
+    "RAID",
+    "ESORICS",
+    "AsiaCCS",
+    "PETS",
+    "WWW"
+]
 NAME_MAP = {
         "NDSS": ("ndss", "ndss"),
         "IEEE S&P": ("sp", "sp"),
@@ -29,7 +40,7 @@ NAME_MAP = {
         "IEEE EuroS&P": ("eurosp", "eurosp"),
         "ACSAC": ("acsac", "acsac"),
         "RAID": ("raid", "raid"),
-        "ESORICS": [("esorics", "esorics"), ("esorics", "esorics{YEAR}-1"), ("esorics", "esorics{YEAR}-2")],
+        "ESORICS": [("esorics", "esorics"), ("esorics", "esorics{YEAR}-1"), ("esorics", "esorics{YEAR}-2"), ("esorics", "esorics{YEAR}-3"), ("esorics", "esorics{YEAR}-4")],
         "AsiaCCS": [("ccs", "asiaccs"), ("asiaccs", "asiaccs")],
         "PETS": [("pet", "pet"), ("pet", "pets"), ("popets", "popets", "journals")],
         "WWW": ("www", "www"),
@@ -43,9 +54,9 @@ def save_paper(conf, year, title, authors, abstract):
     session.commit()
     session.close()
 
-def paper_exist(conf, year, title, authors):
+def paper_exist(conf, year, title):
     session = Session()
-    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title, Paper.abstract==abstract).first()
+    paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
     session.close()
     return paper is not None
 
@@ -161,7 +172,7 @@ def get_papers(name, year, build_abstract):
                 title = paper_html.find('span', {'class': 'title'}).text
                 authors = [x.text for x in paper_html.find_all('span', {'itemprop': 'author'})]
                 # insert the entry only if the paper does not exist
-                if not paper_exist(name, year, title, authors):
+                if not paper_exist(name, year, title):
                     abstract = ""
                     if build_abstract:
                         abstract = get_abstract(paper_html, name, title, year, authors)
