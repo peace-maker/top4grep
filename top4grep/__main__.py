@@ -77,8 +77,8 @@ def show_papers(papers, keywords, show_abstracts=False):
             ansi_link = title
         header = f"{paper.year}: {paper.conference:8s} - {ansi_link}"
         print(header)
-        if show_abstracts:
-            print(abstract)
+        if show_abstracts and abstract:
+            print(abstract.strip())
             print("")
 
 def list_missing_abstract():
