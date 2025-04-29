@@ -66,15 +66,16 @@ COLORS = [
 def show_papers(papers, keywords, show_abstracts=False):
     for paper in papers:
         abstract = paper.abstract
-        if paper.url:
-            ansi_link = f"\033]8;;{paper.url}\033\\{paper.title}\033]8;;\033\\"
-        else:
-            ansi_link = paper.title
-        header = f"{paper.year}: {paper.conference:8s} - {ansi_link}"
+        title = paper.title
         for (k,c) in zip_longest(keywords, COLORS, fillvalue="\033[96m"):
             kre = re.compile("(" + re.escape(k) + ")", re.IGNORECASE)
             abstract = kre.sub(c + "\\1" "\033[00m", abstract)
-            header = kre.sub(c + "\\1" + "\033[00m", header)
+            title = kre.sub(c + "\\1" + "\033[00m", title)
+        if paper.url:
+            ansi_link = f"\033]8;;{paper.url}\033\\{title}\033]8;;\033\\"
+        else:
+            ansi_link = title
+        header = f"{paper.year}: {paper.conference:8s} - {ansi_link}"
         print(header)
         if show_abstracts:
             print(abstract)
