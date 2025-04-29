@@ -74,7 +74,8 @@ def main():
         assert os.path.exists(DB_PATH), "need to build a paper database first to perform wanted queries"
         keywords = [x.strip() for x in args.k.split(',')]
         if keywords:
-            logger.info("Grep based on the following keywords: %s", ', '.join(keywords))
+            colored_keywords = [f"{c}{k}\033[00m" for (k,c) in zip_longest(keywords, COLORS, fillvalue="\033[96m") if k and k != "\033[96m"]
+            logger.info("Grep based on the following keywords: %s", ', '.join(colored_keywords))
         else:
             logger.warning("No keyword is provided. Return all the papers.")
 
