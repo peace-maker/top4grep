@@ -5,7 +5,7 @@ A grep tool for the top 4 security conferences
 ```
 git clone https://github.com/Kyle-Kyle/top4grep
 cd top4grep
-pip3 install -e .
+pip3 install .
 ```
 
 ## Usage 
@@ -15,9 +15,11 @@ If you want to update the papers stored in `top4grep/papers.db`, you can recreat
 top4grep --build-db --abstracts
 ```
 
+Make sure to install the database build requirements too when building/updating the database: `pip3 install .[BUILD]`.
+
 ### Query
 ```bash
-top4grep -k <kerywords>
+top4grep -k <keywords>
 ```
 
 For example, `python top4grep.py -k linux,kernel`

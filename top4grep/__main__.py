@@ -1,5 +1,4 @@
 import argparse
-import os
 import re
 from itertools import zip_longest
 
@@ -9,7 +8,6 @@ from nltk.data import find
 from nltk.stem import PorterStemmer
 
 from . import DB_PATH, Session
-from .build_db import build_db
 from .db import Paper
 from .utils import new_logger
 
@@ -117,6 +115,11 @@ def main():
         show_papers(papers,keywords,args.abstracts)
     elif args.build_db:
         print("Building db...")
+        try:
+            from .build_db import build_db
+        except ModuleNotFoundError:
+            logger.error("Failed to import build_db. Please make sure you have the required dependencies installed. Try running 'pip install .[BUILD]'")
+            return
         build_db(args.abstracts, args.missing_abstract)
 
 
