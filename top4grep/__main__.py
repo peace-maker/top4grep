@@ -15,8 +15,7 @@ from .utils import new_logger
 logger = new_logger("Top4Grep")
 stemmer = PorterStemmer()
 
-CONFERENCES = ["NDSS", "IEEE S&P", "USENIX", "CCS", "IEEE EuroS&P", "RAID",
-               "ESORICS", "ACSAC", "AsiaCCS", "PETS", "WWW"]
+CONFERENCES = ["RAID", "ESORICS", "ACSAC", "AsiaCCS", "PETS", "WWW", "IEEE EuroS&P", "NDSS", "IEEE S&P", "USENIX", "CCS"]
 
 # Function to check and download 'punkt' if not already available
 def check_and_download_punkt():
