@@ -63,10 +63,17 @@ def update_paper(conf, year, title, abstract):
     session.close()
 
 def get_abstract(paper_html, conf_name, title, year, authors):
-    abstract = Abstracts[conf_name].get_abstract(paper_html, title, authors)
-    if abstract:
-        return abstract
-    return get_abstract_s2(title, year)
+    if conf_name in Abstracts:
+        abstract = Abstracts[conf_name].get_abstract(paper_html, title, authors)
+        if abstract:
+            return abstract
+    if S2_API_KEY:
+        try:
+            return get_abstract_s2(title, year)
+        finally:
+            time.sleep(S2_REQUESTS_PER_SECOND)
+    logger.warning(f"Failed to obtain abstract for {title} at {year}")
+    return ""
 
 def get_abstract_s2(title, year):
     # https://www.zenrows.com/blog/python-requests-retry#use-existing-retry-wrapper
@@ -158,14 +165,12 @@ def get_papers(name, year, build_abstract):
                     abstract = ""
                     if build_abstract:
                         abstract = get_abstract(paper_html, name, title, year, authors)
-                        time.sleep(S2_REQUESTS_PER_SECOND)
                     save_paper(name, year, title, authors, abstract)
                     new_cnt += 1
                 elif build_abstract and not paper_has_abstract(name, year, title):
                     abstract = get_abstract(paper_html, name, title, year, authors)
                     if abstract:
                         update_paper(name, year, title, abstract)
-                    time.sleep(S2_REQUESTS_PER_SECOND)
                 cnt += 1
         except Exception as e:
             logger.warning(f"Failed to obtain papers at {name}-{year}")
