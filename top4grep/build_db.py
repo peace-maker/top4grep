@@ -64,7 +64,7 @@ def paper_has_abstract(conf, year, title):
     session = Session()
     paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
     session.close()
-    return paper is not None and paper.abstract != ""
+    return paper is not None and paper.abstract is not None and paper.abstract != ""
 
 def update_paper(conf, year, title, abstract):
     session = Session()
@@ -184,13 +184,21 @@ def get_papers(name, year, build_abstract):
                         update_paper(name, year, title, abstract)
                 cnt += 1
         except Exception as e:
-            logger.warning(f"Failed to obtain papers at {name}-{year}")
+            logger.warning(f"Failed to obtain papers at {name}-{year} from {r.request.url}")
             logger.exception(e)
 
     logger.debug(f"Found {new_cnt} new papers ({cnt} total) at {name}-{year}...")
 
 
-def build_db(build_abstract):
+def build_db(build_abstract, missing_abstracts_only):
     for conf in CONFERENCES:
-        for year in range(2000, datetime.now().year+1):
-            get_papers(conf, year, build_abstract)
+        if build_abstract and missing_abstracts_only:
+            with Session() as session:
+                papers = session.query(Paper).filter(Paper.conference == conf, Paper.abstract == "").all()
+            years = list(set(paper.year for paper in papers))
+            years.sort()
+            for year in years:
+                get_papers(conf, year, build_abstract)
+        else:
+            for year in range(2000, datetime.now().year+1):
+                get_papers(conf, year, build_abstract)

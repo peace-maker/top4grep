@@ -90,11 +90,11 @@ def main():
                                      usage="%(prog)s [options] -k <keywords>")
     parser.add_argument('-k', type=str, help="keywords to grep, separated by ','. For example, 'linux,kernel,exploit'", default='')
     parser.add_argument('--build-db', action="store_true", help="Builds the database of conference papers")
-    parser.add_argument('--list-missing-abstract', action="store_true", help="List the papers that do not have abstracts")
+    parser.add_argument('--missing-abstract', action="store_true", help="List the papers that do not have abstracts")
     parser.add_argument('--abstracts', action="store_true", help="Involve abstract into the database's building or query (Need Chrome for building)")
     args = parser.parse_args()
 
-    if args.list_missing_abstract:
+    if args.missing_abstract and not args.build_db:
         list_missing_abstract()
         return
 
@@ -113,7 +113,7 @@ def main():
         show_papers(papers,keywords,args.abstracts)
     elif args.build_db:
         print("Building db...")
-        build_db(args.abstracts)
+        build_db(args.abstracts, args.missing_abstract)
 
 
 if __name__ == "__main__":
