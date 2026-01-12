@@ -25,7 +25,7 @@ class BasePaperAbstract(ABC):
             publisher_url = self.get_publisher_url(paper_html)
         except Exception as e:
             logger.debug(f"Failed to obtain publisher URL. Paper: {title}")
-            return ""
+            raise
         else:
             if publisher_url.endswith('.pdf') or publisher_url.endswith('.zip'):
                 logger.debug(f"Publisher URL is a file: {publisher_url}")
@@ -36,7 +36,7 @@ class BasePaperAbstract(ABC):
                 return abstract
             except Exception as e:
                 logger.debug(f"Failed to extract abstract from publisher URL {publisher_url}.")
-                return ""
+                raise
 
     def get_publisher_url(self, paper_html):
         ee = paper_html.find('li', {'class': 'ee'})
@@ -89,44 +89,42 @@ class AbstractIEEE(BasePaperAbstract):
 
     def _get_abstract_from_computerorg(self, url):
         # TODO: handle the case when Chrome is not available
-        driver = webdriver.Chrome()
-        url = self.update_url(url)
-        driver.get(url)
+        with webdriver.Chrome() as driver:
+            url = self.update_url(url)
+            driver.get(url)
 
 
-        # Wait for the dynamic element to be present on the page
-        element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.TAG_NAME, 'article')))
-        # TODO: I'm not sure if this can handle abstracts with multiple paragraphs
-        abstract = element.find_element(By.CLASS_NAME, 'article-content').text
-        driver.quit()
-        return abstract
+            # Wait for the dynamic element to be present on the page
+            element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.TAG_NAME, 'article')))
+            # TODO: I'm not sure if this can handle abstracts with multiple paragraphs
+            abstract = element.find_element(By.CLASS_NAME, 'article-content').text
+            return abstract
     
     def _get_abstract_from_ieeexplore(self, url):
         # TODO: handle the case when Chrome is not available
-        driver = webdriver.Chrome()
-        url = self.update_url(url)
-        logger.debug(f'URL: {url}')
-        driver.get(url)
+        with webdriver.Chrome() as driver:
+            url = self.update_url(url)
+            logger.debug(f'URL: {url}')
+            driver.get(url)
 
-        # Wait for the dynamic element to be present on the page
-        element = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.CLASS_NAME, 'abstract-text')))
-        temp = element.find_elements(By.CLASS_NAME, 'abstract-text-view-all')
-        if len(temp) > 0:
-            # If there's a view all button
-            view_all = temp[0]
-            driver.execute_script("arguments[0].scrollIntoView(true);", view_all)
-            view_all.click()
-            text = driver.find_element(By.CLASS_NAME, 'abstract-text').text
-        else:
-            text = element.text
-        
-        if text.find('Abstract:\n') >= 0:
-            text = text[text.find('Abstract:\n') + len('Abstract:\n'):]
-        if text.find('\n(Show Less)') >= 0:
-            text = text[:text.find('\n(Show Less)')]
-        
-        driver.close()
-        return text
+            # Wait for the dynamic element to be present on the page
+            element = WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.CLASS_NAME, 'abstract-text')))
+            temp = element.find_elements(By.CLASS_NAME, 'abstract-text-view-all')
+            if len(temp) > 0:
+                # If there's a view all button
+                view_all = temp[0]
+                driver.execute_script("arguments[0].scrollIntoView(true);", view_all)
+                view_all.click()
+                text = driver.find_element(By.CLASS_NAME, 'abstract-text').text
+            else:
+                text = element.text
+            
+            if text.find('Abstract:\n') >= 0:
+                text = text[text.find('Abstract:\n') + len('Abstract:\n'):]
+            if text.find('\n(Show Less)') >= 0:
+                text = text[:text.find('\n(Show Less)')]
+
+            return text
     
     def get_abstract_from_publisher(self, url, _):
         # TODO: this is super slow. Maybe not Selenium?
@@ -166,17 +164,20 @@ class AbstractACM(BasePaperAbstract):
         # TODO: ACM library doesn't like me to crawl and will ban me when upset.
         try:
             logger.debug(f'URL: {url}')
-            driver = webdriver.Chrome()
-            driver.get(url)
+            with webdriver.Chrome() as driver:
+                driver.get(url)
 
-            # Wait for the dynamic element to be present on the page
-            element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.TAG_NAME, 'article')))
-            abstract = element.find_element(By.ID, 'abstract').text.removeprefix('Abstract').strip()
-            driver.quit()
+                # Wait for the dynamic element to be present on the page
+                element = WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.TAG_NAME, 'article')))
+                try:
+                    abstract_el = element.find_element(By.ID, 'abstract')
+                except Exception:
+                    abstract_el = element.find_element(By.ID, 'summary-abstract')
+                abstract = abstract_el.text.removeprefix('Abstract').strip()
 
-            if abstract == 'No abstract available.':
-                return ''
-            return abstract
+                if abstract == 'No abstract available.':
+                    return ''
+                return abstract
         finally:
             time.sleep(2)
 

@@ -46,8 +46,8 @@ NAME_MAP = {
         "WWW": ("www", "www"),
         }
 
-def save_paper(conf, year, title, authors, publisher_url, abstract):
-    logger.debug(f'Adding paper {title} with abstract {abstract[:20]}...')
+def save_paper(idx, conf, year, title, authors, publisher_url, abstract):
+    logger.debug(f'{idx:03}: Adding paper {title} with abstract {abstract} and URL {publisher_url}...')
     session = Session()
     paper = Paper(conference=conf, year=year, title=title, authors=", ".join(authors), url=publisher_url, abstract=abstract)
     session.add(paper)
@@ -72,7 +72,8 @@ def paper_has_url(conf, year, title):
     session.close()
     return paper is not None and paper.url is not None and paper.url != ""
 
-def update_paper(conf, year, title, publisher_url, abstract):
+def update_paper(idx, conf, year, title, publisher_url, abstract):
+    logger.debug(f'{idx:03}: Updating paper {title} with abstract {abstract if abstract else ""} and URL {publisher_url}...')
     session = Session()
     paper = session.query(Paper).filter(Paper.conference==conf, Paper.year==year, Paper.title==title).first()
     if publisher_url:
@@ -83,8 +84,16 @@ def update_paper(conf, year, title, publisher_url, abstract):
     session.close()
 
 def get_abstract(paper_html, conf_name, title, year, authors):
+    if title in ("Editors' Introduction.", "Keynote speech."):
+        return ""
     if conf_name in Abstracts:
-        abstract = Abstracts[conf_name].get_abstract(paper_html, title, authors)
+        try:
+            abstract = Abstracts[conf_name].get_abstract(paper_html, title, authors)
+        except Exception as e:
+            logger.warning(f"Failed to obtain abstract for {title} at {year} using specialized extractor. {e}")
+            exit(1)
+        # wait between requests to avoid being blocked
+        time.sleep(60)
         if abstract:
             return abstract
     if S2_API_KEY:
@@ -187,17 +196,18 @@ def get_papers(name, year, build_abstract):
                     abstract = ""
                     if build_abstract:
                         abstract = get_abstract(paper_html, name, title, year, authors)
-                    save_paper(name, year, title, authors, publisher_url, abstract)
+                    save_paper(cnt, name, year, title, authors, publisher_url, abstract)
                     new_cnt += 1
                 elif build_abstract and not paper_has_abstract(name, year, title):
                     abstract = get_abstract(paper_html, name, title, year, authors)
-                    update_paper(name, year, title, publisher_url, abstract)
+                    update_paper(cnt, name, year, title, publisher_url, abstract)
                 elif publisher_url and not paper_has_url(name, year, title):
-                    update_paper(name, year, title, publisher_url, None)
+                    update_paper(cnt, name, year, title, publisher_url, None)
                 cnt += 1
         except Exception as e:
             logger.warning(f"Failed to obtain papers at {name}-{year} from {r.request.url}")
             logger.exception(e)
+        time.sleep(2)  # be polite to DBLP
 
     logger.debug(f"Found {new_cnt} new papers ({cnt} total) at {name}-{year}...")
 
