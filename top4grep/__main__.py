@@ -15,7 +15,20 @@ from .utils import new_logger
 logger = new_logger("Top4Grep")
 stemmer = PorterStemmer()
 
-CONFERENCES = ["RAID", "ESORICS", "ACSAC", "AsiaCCS", "PETS", "WWW", "IEEE EuroS&P", "NDSS", "IEEE S&P", "USENIX", "CCS"]
+CONFERENCES = {
+    "RAID": "raid",
+    "ESORICS": "esorics",
+    "ACSAC": "acsac",
+    "AsiaCCS": "asiaccs",
+    "PETS": "pets",
+    "WWW": "www",
+    "IEEE EuroS&P": "eurosp",
+    "NDSS": "ndss",
+    "IEEE S&P": "sp",
+    "USENIX": "usenix",
+    "CCS": "ccs",
+}
+CONFERENCES_REV = {v: k for k, v in CONFERENCES.items()}
 
 # Function to check and download 'punkt' if not already available
 def check_and_download_punkt():
@@ -37,9 +50,20 @@ def fuzzy_match(title):
 def existed_in_tokens(tokens, keywords):
     return all(map(lambda k: stemmer.stem(k.lower()) in tokens, keywords))
 
-def grep(keywords):
+def grep(keywords, include_confs='', exclude_confs=''):
+    include_confs_set = set([x.strip() for x in include_confs.split(',')]) if include_confs else set(CONFERENCES.values())
+    exclude_confs_set = set([x.strip() for x in exclude_confs.split(',')]) if exclude_confs else set()
+    selected_confs = include_confs_set - exclude_confs_set
+    for conf in selected_confs:
+        if conf not in CONFERENCES_REV:
+            logger.error(f"Unknown conference: {conf}. Available options: {', '.join(list(CONFERENCES.values())[::-1])}")
+            return []
+    selected_confs = set([CONFERENCES_REV.get(conf) for conf in selected_confs])
+    logger.debug(f"Included conferences: {', '.join(selected_confs)}")
+    
     # TODO: currently we only grep from title and abstract, also grep from other fields in the future maybe?
     constraints = [sqlalchemy.or_(Paper.title.icontains(x), Paper.abstract.icontains(x)) for x in keywords]
+    constraints = [sqlalchemy.and_(Paper.conference.in_(selected_confs), *constraints)]
 
     with Session() as session:
         papers = session.query(Paper).filter(*constraints).all()
@@ -51,7 +75,7 @@ def grep(keywords):
     filter_paper = filter(lambda p: existed_in_tokens(fuzzy_match(p.title.lower() + " " + p.abstract.lower()), keywords), papers)
 
     # perform customized sorthing
-    papers = sorted(filter_paper, key=lambda paper: paper.year + CONFERENCES.index(paper.conference)/10, reverse=True)
+    papers = sorted(filter_paper, key=lambda paper: paper.year + list(CONFERENCES.keys()).index(paper.conference)/10, reverse=True)
     return papers
 
 COLORS = [
@@ -92,6 +116,8 @@ def main():
     parser = argparse.ArgumentParser(description='Scripts to query the paper database',
                                      usage="%(prog)s [options] -k <keywords>")
     parser.add_argument('-k', type=str, help="keywords to grep, separated by ','. For example, 'linux,kernel,exploit'", default='')
+    parser.add_argument('-c', type=str, help="conferences to include, separated by ','. Defaults to all. Available options: " + ', '.join(list(CONFERENCES.values())[::-1]), default='')
+    parser.add_argument('-cx', type=str, help="conferences to exclude, separated by ','. Defaults to none. Available options: " + ', '.join(list(CONFERENCES.values())[::-1]), default='')
     parser.add_argument('--build-db', action="store_true", help="Builds the database of conference papers")
     parser.add_argument('--missing-abstract', action="store_true", help="List the papers that do not have abstracts")
     parser.add_argument('--abstracts', action="store_true", help="Involve abstract into the database's building or query (Need Chrome for building)")
@@ -110,7 +136,7 @@ def main():
         else:
             logger.warning("No keyword is provided. Return all the papers.")
 
-        papers = grep(keywords)
+        papers = grep(keywords, include_confs=args.c, exclude_confs=args.cx)
         logger.debug(f"Found {len(papers)} papers")
 
         show_papers(papers,keywords,args.abstracts)

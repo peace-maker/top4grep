@@ -25,6 +25,12 @@ Currently, the query is just a case-insensitive match (just like grep). The retu
 
 Add `--abstracts` to print the abstracts too.
 
+You can limit the conferences you want to search using the `-c` or `-cx` options. All available conferences are searched by default. `-c` allows you to specify which conferences to include in the search explicitly, while `-cx` allows you to remove certain conferences.
+
+```bash
+top4grep -k <keywords> -c ccs,sp,ndss,usenix
+```
+
 ## Screenshot
 ![screenshot](https://raw.githubusercontent.com/Kyle-Kyle/top4grep/master/img/screenshot.png)
 
